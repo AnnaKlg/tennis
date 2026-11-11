@@ -1,60 +1,41 @@
-import html
 import json
-import re
-import requests
-
-url = "https://vkvideo.ru"
-headers = {
-    "user-agent": "mozilla/5.0 (windows nt 10.0; win64; x64) applewebkit/537.36 (khtml, like gecko) chrome/122.0.0.0 safari/537.36",
-    "accept-language": "ru-RU,ru;q=0.9"
-}
+import subprocess
 
 data = {
     "live_title": "активного эфира сейчас нет",
     "live_url": "",
     "replay_title": "последние видео с андреевой (@tennis_bolshe)",
-    "replay_url": "https://vkvideo.ru?q=%D0%B0%D0%BD%D0%B4%D1%80%D0%B5%D0%B5%D0%B2%D0%B0"
+    "replay_url": "https://vk.com"
 }
 
 try:
-    res = requests.get(url, headers=headers, timeout=15)
-    page = html.unescape(res.text)
-
-    # ищем пары из названия видео и его id на витрине vkvideo.ru
-    patterns = [
-        r'"title"\s*:\s*"([^"]+)"[^\}]{0,400}?"id"\s*:\s*(\d{7,12})',
-        r'href="(/video-218116775_(\d+))"[^>]*title="([^"]+)"',
-        r'title="([^"]+)"[^>]*href="(/video-218116775_(\d+))"'
+    cmd = [
+        "yt-dlp",
+        "--flat-playlist",
+        "--playlist-end", "30",
+        "-j",
+        "https://vk.com"
     ]
+    res = subprocess.run(cmd, capture_output=True, text=True, timeout=45)
+    for line in res.stdout.splitlines():
+        if not line.strip():
+            continue
+        item = json.loads(line)
+        title = item.get("title", "")
+        video_url = item.get("url") or item.get("webpage_url", "")
+        if "андреева" not in title.lower() or not video_url:
+            continue
 
-    found_items = []
-
-    for m in re.finditer(patterns[0], page):
-        title, vid = m.group(1), m.group(2)
-        if "андреева" in title.lower():
-            found_items.append((title, f"https://vkvideo.ru_{vid}"))
-
-    if not found_items:
-        for m in re.finditer(patterns[1], page):
-            path, title = m.group(1), m.group(3)
-            if "андреева" in title.lower():
-                found_items.append((title, "https://vkvideo.ru" + path))
-
-    if not found_items:
-        for m in re.finditer(patterns[2], page):
-            title, path = m.group(1), m.group(2)
-            if "андреева" in title.lower():
-                found_items.append((title, "https://vkvideo.ru" + path))
-
-    for title, link in found_items:
-        is_live = "прямой эфир" in title.lower() or "live" in title.lower()
+        is_live = item.get("live_status") == "is_live" or "прямой эфир" in title.lower() or "live" in title.lower()
         if is_live and not data["live_url"]:
             data["live_title"] = title
-            data["live_url"] = link
+            data["live_url"] = video_url
         elif not is_live and "q=" in data["replay_url"]:
             data["replay_title"] = title
-            data["replay_url"] = link
+            data["replay_url"] = video_url
 
+        if data["live_url"] and "q=" not in data["replay_url"]:
+            break
 except Exception:
     pass
 
