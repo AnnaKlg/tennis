@@ -19,9 +19,14 @@
     .sub-info { color: #65676b; font-size: 13px; margin-top: 4px; }
     .video-box { background: #18191a; color: #fff; border-radius: 16px; padding: 14px; margin-bottom: 14px; }
     .video-label { font-size: 12px; font-weight: bold; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
-    .video-title { font-size: 12px; color: #b0b3b8; margin-bottom: 8px; line-height: 1.35; }
-    .video-frame { width: 100%; height: 220px; border: none; border-radius: 10px; background: #000; display: block; }
-    .placeholder-box { width: 100%; height: 95px; border-radius: 10px; background: #242526; display: flex; align-items: center; justify-content: center; text-align: center; padding: 12px; font-size: 12px; color: #8a8d91; }
+    .video-title { font-size: 13px; color: #e4e6eb; margin-bottom: 10px; line-height: 1.4; }
+    .play-card { display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(135deg, #242526 0%, #1c1e21 100%); border: 1px solid #3a3b3c; border-radius: 12px; padding: 22px 14px; text-decoration: none; color: #fff; transition: transform 0.15s; }
+    .play-card:active { transform: scale(0.98); }
+    .play-circle { width: 52px; height: 52px; border-radius: 50%; background: #0077ff; display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 10px; box-shadow: 0 4px 14px rgba(0, 119, 255, 0.45); }
+    .play-circle.live { background: #ff3b30; box-shadow: 0 4px 14px rgba(255, 59, 48, 0.45); }
+    .play-caption { font-size: 13px; font-weight: 600; }
+    .play-sub { font-size: 11px; color: #8a8d91; margin-top: 4px; }
+    .placeholder-box { width: 100%; height: 90px; border-radius: 10px; background: #242526; display: flex; align-items: center; justify-content: center; text-align: center; padding: 12px; font-size: 12px; color: #8a8d91; }
     .section-title { font-size: 16px; font-weight: bold; margin: 18px 0 10px; display: flex; justify-content: space-between; align-items: center; }
     .card { background: #f8f9fa; padding: 12px; border-radius: 12px; margin-bottom: 8px; font-size: 13px; line-height: 1.45; }
     .card-next { background: #fff9db; border: 1px solid #ffe066; }
@@ -48,9 +53,9 @@
         <span style="color: #ff4d4f;">🔴 1. прямой эфир</span>
         <span style="color: #8a8d91;">@tennis_bolshe</span>
       </div>
-      <div id="live-title" class="video-title">проверка прямых эфиров на @tennis_bolshe...</div>
+      <div id="live-title" class="video-title">поиск прямых эфиров с андреевой...</div>
       <div id="live-player-box">
-        <div class="placeholder-box">сейчас активного эфира с андреевой нет — плеер появится сам при старте следующего матча</div>
+        <div class="placeholder-box">сейчас активного эфира с андреевой нет — кнопка запуска появится сама при старте матча</div>
       </div>
     </div>
 
@@ -62,7 +67,11 @@
       </div>
       <div id="replay-title" class="video-title">мирра андреева — элина свитолина | wta finals | итоговый турнир</div>
       <div id="replay-player-box">
-        <iframe class="video-frame" src="https://vk.com" allow="autoplay; encrypted-media; fullscreen; picture-in-picture;" allowfullscreen></iframe>
+        <a href="https://vkvideo.ru" target="_blank" class="play-card">
+          <div class="play-circle">▶</div>
+          <div class="play-caption">смотреть запись матча в vk видео</div>
+          <div class="play-sub">откроется без блокировки встраивания</div>
+        </a>
       </div>
     </div>
 
@@ -114,7 +123,6 @@
         const json = await res.json();
         const html = json.contents || "";
 
-        // ищем на стене сообщества @tennis_bolshe посты и видео со словом андреева
         const post_blocks = html.split("wall_item");
         let found_live = null;
         let found_replay = null;
@@ -126,33 +134,39 @@
           const vid_match = block.match(/video(-218116775)_(\d+)/);
           if (!vid_match) continue;
 
-          const oid = vid_match;
-          const vid = vid_match;
-          const embed = `https://vk.com{oid}&id=${vid}&hd=2`;
+          const direct_url = `https://vkvideo.ru{vid_match}_${vid_match}`;
           const is_live = clean_text.toLowerCase().includes("прямая трансляция") || clean_text.toLowerCase().includes("live");
 
-          // вытаскиваем читаемый заголовок матча
           const title_match = clean_text.match(/([^\.!\n]{10,90}андреева[^\.!\n]{5,90})/i);
           const title = title_match ? title_match.trim() : "матч мирры андреевой (@tennis_bolshe)";
 
           if (is_live && !found_live) {
-            found_live = { title, embed };
+            found_live = { title, direct_url };
           } else if (!is_live && !found_replay) {
-            found_replay = { title, embed };
+            found_replay = { title, direct_url };
           }
         }
 
         if (found_live) {
           live_title_el.textContent = found_live.title;
-          live_box_el.innerHTML = `<iframe class="video-frame" src="${found_live.embed}" allow="autoplay; encrypted-media; fullscreen; picture-in-picture;" allowfullscreen></iframe>`;
+          live_box_el.innerHTML = `
+            <a href="${found_live.direct_url}" target="_blank" class="play-card">
+              <div class="play-circle live">🔴</div>
+              <div class="play-caption">смотреть прямой эфир в vk видео</div>
+              <div class="play-sub">трансляция уже идет на @tennis_bolshe</div>
+            </a>`;
         } else {
           live_title_el.textContent = "активного эфира сейчас нет";
         }
 
-        // если на канале появилась более свежая запись чем матч со свитолиной — обновляем второе окошко
-        if (found_replay && !found_replay.embed.includes("456252790")) {
+        if (found_replay && !found_replay.direct_url.includes("456252790")) {
           replay_title_el.textContent = found_replay.title;
-          replay_box_el.innerHTML = `<iframe class="video-frame" src="${found_replay.embed}" allow="autoplay; encrypted-media; fullscreen; picture-in-picture;" allowfullscreen></iframe>`;
+          replay_box_el.innerHTML = `
+            <a href="${found_replay.direct_url}" target="_blank" class="play-card">
+              <div class="play-circle">▶</div>
+              <div class="play-caption">смотреть запись матча в vk видео</div>
+              <div class="play-sub">свежая запись с @tennis_bolshe</div>
+            </a>`;
         }
       } catch (e) {
         live_title_el.textContent = "активного эфира сейчас нет";
@@ -185,19 +199,3 @@
               const p1 = comps?.athlete?.displayName || "";
               const p2 = comps?.athlete?.displayName || "";
               const state = match.status?.type?.state || "pre";
-              const dt = new Date(match.date).toLocaleString("ru-RU", {
-                day: "numeric", month: "long", hour: "2-digit", minute: "2-digit"
-              });
-
-              if (state === "pre" || state === "in") {
-                upcoming_html += `
-                  <div class="card card-next">
-                    <strong>${state === "in" ? "🔴 идет сейчас" : "🗓 " + dt}</strong><br>
-                    ${p1} — ${p2}<br>
-                    <span class="muted">${tournament}</span>
-                  </div>`;
-              } else if (state === "post") {
-                const me = comps.find(c => c.athlete?.displayName?.toLowerCase().includes("andreeva"));
-                const is_win = me?.winner === true;
-                past_html += `
-                  <div class="card ${is_win ? "win" : "loss"}">
