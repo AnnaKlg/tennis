@@ -35,7 +35,6 @@ for url in channels:
             if "андреева" not in clean_text.lower():
                 continue
 
-            # ищем любую ссылку на вк (включая прямые видео и короткие ссылки vk.cc из превью)
             links = re.findall(r'href="(https?://(?:m\.)?(?:vk\.com|vkvideo\.ru|vk\.cc)/[^"\s]+)"', msg, re.I)
             video_link = ""
             for link in links:
@@ -58,14 +57,13 @@ for is_live, title, link in found_videos:
     if is_live and not data["live_url"]:
         data["live_title"] = title
         data["live_url"] = link
-    elif not is_live and data["replay_url"] == "https://vkvideo.ru":
+    elif not is_live and "q=" in data["replay_url"]:
         data["replay_title"] = title
         data["replay_url"] = link
 
-# если нашелся только один ролик (например, запись эфира), берем первый элемент списка
-if data["replay_url"] == "https://vkvideo.ru" and len(found_videos) > 0:
-    data["replay_title"] = found_videos[1]
-    data["replay_url"] = found_videos[2]
+if "q=" in data["replay_url"] and len(found_videos) > 0:
+    data["replay_title"] = found_videos[0][1]
+    data["replay_url"] = found_videos[0][2]
 
 with open("video.json", "w", encoding="utf-8") as f:
     json.dump(data, f, ensure_ascii=False, indent=2)
