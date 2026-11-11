@@ -1,69 +1,61 @@
 import json
-import re
+import os
+import urllib.parse
 import urllib.request
-import xml.etree.ElementTree as et
 
-rss_urls = [
-    "https://rsshub.app",
-    "https://rssforever.com",
-    "https://slarker.me"
-]
+token = os.environ.get("vk_token", "").strip()
+owner_id = "-218116775"
 
 data = {
     "live_title": "активного эфира сейчас нет",
     "live_url": "",
-    "replay_title": "последние видео с андреевой (@tennis_bolshe)",
+    "replay_title": "ожидание обновления...",
     "replay_url": "https://vk.com"
 }
 
-headers = {
-    "user-agent": "mozilla/5.0 (windows nt 10.0; win64; x64) applewebkit/537.36 (khtml, like gecko) chrome/122.0.0.0 safari/537.36"
-}
+if not token:
+    data["replay_title"] = "ошибка: токен не передан в скрипт"
+else:
+    params = urllib.parse.urlencode({
+        "owner_id": owner_id,
+        "count": 30,
+        "access_token": token,
+        "v": "5.199"
+    })
+    url = f"https://vk.com?{params}"
 
-for rss_url in rss_urls:
     try:
-        req = urllib.request.Request(rss_url, headers=headers)
+        req = urllib.request.Request(url)
         with urllib.request.urlopen(req, timeout=15) as resp:
-            xml_data = resp.read()
+            res = json.loads(resp.read().decode("utf-8"))
 
-        root = et.fromstring(xml_data)
-        items = root.findall(".//item")
+        if "error" in res:
+            err_msg = res["error"].get("error_msg", "ошибка вк")
+            data["replay_title"] = f"ошибка вк: {err_msg}"
+        else:
+            items = res.get("response", {}).get("items", [])
+            for video in items:
+                title = video.get("title", "")
+                if "андреева" not in title.lower():
+                    continue
 
-        for item in items:
-            title_el = item.find("title")
-            desc_el = item.find("description")
-            link_el = item.find("link")
+                vid = video.get("id")
+                oid = video.get("owner_id", owner_id)
+                # формируем прямую ссылку на плеер и страницу ролика
+                direct_url = f"https://vkvideo.ru{oid}_{vid}"
+                is_live = video.get("live", 0) == 1
 
-            title = title_el.text if title_el is not None and title_el.text else ""
-            desc = desc_el.text if desc_el is not None and desc_el.text else ""
-            link = link_el.text if link_el is not None and link_el.text else ""
+                if is_live and not data["live_url"]:
+                    data["live_title"] = title
+                    data["live_url"] = direct_url
+                elif not is_live and data["replay_url"] == "https://vk.com":
+                    data["replay_title"] = title
+                    data["replay_url"] = direct_url
 
-            full_text = f"{title} {desc}".lower()
-            if "андреева" not in full_text:
-                continue
-
-            vid_match = re.search(r"video(-218116775_\d+)", f"{link} {desc}")
-            if not vid_match:
-                continue
-
-            real_video_url = "https://vk.com" + vid_match.group(1)
-            clean_title = re.sub(r"<[^>]+>", " ", title).strip() or "матч мирры андреевой (@tennis_bolshe)"
-            is_live = "прямой эфир" in full_text or "прямая трансляция" in full_text or "live" in full_text
-
-            if is_live and not data["live_url"]:
-                data["live_title"] = clean_title
-                data["live_url"] = real_video_url
-            elif not is_live and "q=" in data["replay_url"]:
-                data["replay_title"] = clean_title
-                data["replay_url"] = real_video_url
-
-            if data["live_url"] and "q=" not in data["replay_url"]:
-                break
-
-        if "q=" not in data["replay_url"] or data["live_url"]:
-            break
-    except Exception:
-        continue
+                if data["live_url"] and data["replay_url"] != "https://vk.com":
+                    break
+    except Exception as e:
+        data["replay_title"] = f"ошибка сети: {str(e)}"
 
 with open("video.json", "w", encoding="utf-8") as f:
     json.dump(data, f, ensure_ascii=False, indent=2)
