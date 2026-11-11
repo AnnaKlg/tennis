@@ -20,13 +20,13 @@
     .video-box { background: #18191a; color: #fff; border-radius: 16px; padding: 14px; margin-bottom: 14px; }
     .video-label { font-size: 12px; font-weight: bold; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
     .video-title { font-size: 13px; color: #e4e6eb; margin-bottom: 10px; line-height: 1.4; }
-    .play-card { display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(135deg, #242526 0%, #1c1e21 100%); border: 1px solid #3a3b3c; border-radius: 12px; padding: 22px 14px; text-decoration: none; color: #fff; transition: transform 0.15s; }
+    .play-card { display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(135deg, #242526 0%, #1c1e21 100%); border: 1px solid #3a3b3c; border-radius: 12px; padding: 20px 14px; text-decoration: none; color: #fff; transition: transform 0.15s; }
     .play-card:active { transform: scale(0.98); }
-    .play-circle { width: 52px; height: 52px; border-radius: 50%; background: #0077ff; display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 10px; box-shadow: 0 4px 14px rgba(0, 119, 255, 0.45); }
+    .play-circle { width: 50px; height: 50px; border-radius: 50%; background: #0077ff; display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 8px; box-shadow: 0 4px 14px rgba(0, 119, 255, 0.45); }
     .play-circle.live { background: #ff3b30; box-shadow: 0 4px 14px rgba(255, 59, 48, 0.45); }
-    .play-caption { font-size: 13px; font-weight: 600; }
-    .play-sub { font-size: 11px; color: #8a8d91; margin-top: 4px; }
-    .placeholder-box { width: 100%; height: 90px; border-radius: 10px; background: #242526; display: flex; align-items: center; justify-content: center; text-align: center; padding: 12px; font-size: 12px; color: #8a8d91; }
+    .play-caption { font-size: 13px; font-weight: 600; text-align: center; }
+    .play-sub { font-size: 11px; color: #8a8d91; margin-top: 4px; text-align: center; }
+    .placeholder-box { width: 100%; height: 85px; border-radius: 10px; background: #242526; display: flex; align-items: center; justify-content: center; text-align: center; padding: 12px; font-size: 12px; color: #8a8d91; }
     .section-title { font-size: 16px; font-weight: bold; margin: 18px 0 10px; display: flex; justify-content: space-between; align-items: center; }
     .card { background: #f8f9fa; padding: 12px; border-radius: 12px; margin-bottom: 8px; font-size: 13px; line-height: 1.45; }
     .card-next { background: #fff9db; border: 1px solid #ffe066; }
@@ -44,7 +44,7 @@
 
     <div class="player-info">
       <h1 class="player-name">мирра андреева</h1>
-      <div class="sub-info">канал «больше! | теннис» • автопоиск видео: андреева</div>
+      <div class="sub-info">канал «больше! | теннис» • прямые ссылки на матчи</div>
     </div>
 
     <!-- окошко 1: прямая трансляция -->
@@ -55,11 +55,11 @@
       </div>
       <div id="live-title" class="video-title">поиск прямых эфиров с андреевой...</div>
       <div id="live-player-box">
-        <div class="placeholder-box">сейчас активного эфира с андреевой нет — кнопка запуска появится сама при старте матча</div>
+        <div class="placeholder-box">сейчас активного эфира с андреевой нет — прямая ссылка появится сама при старте матча</div>
       </div>
     </div>
 
-    <!-- окошко 2: запись последнего матча -->
+    <!-- окошко 2: прямая ссылка на последний матч -->
     <div class="video-box">
       <div class="video-label">
         <span style="color: #4dabf7;">📼 2. запись последнего матча</span>
@@ -69,8 +69,8 @@
       <div id="replay-player-box">
         <a href="https://vkvideo.ru" target="_blank" class="play-card">
           <div class="play-circle">▶</div>
-          <div class="play-caption">смотреть запись матча в vk видео</div>
-          <div class="play-sub">откроется без блокировки встраивания</div>
+          <div class="play-caption">открыть запись матча в vk видео</div>
+          <div class="play-sub">прямой переход сразу на нужный ролик</div>
         </a>
       </div>
     </div>
@@ -109,7 +109,6 @@
   </div>
 
   <script>
-    // автоматическая проверка новых эфиров и записей на канале @tennis_bolshe (-218116775)
     async function load_vk_videos() {
       const live_title_el = document.getElementById("live-title");
       const live_box_el = document.getElementById("live-player-box");
@@ -134,11 +133,11 @@
           const vid_match = block.match(/video(-218116775)_(\d+)/);
           if (!vid_match) continue;
 
-          const direct_url = `https://vkvideo.ru{vid_match}_${vid_match}`;
+          const direct_url = `https://vkvideo.ru{vid_match[1]}_${vid_match[2]}`;
           const is_live = clean_text.toLowerCase().includes("прямая трансляция") || clean_text.toLowerCase().includes("live");
 
           const title_match = clean_text.match(/([^\.!\n]{10,90}андреева[^\.!\n]{5,90})/i);
-          const title = title_match ? title_match.trim() : "матч мирры андреевой (@tennis_bolshe)";
+          const title = title_match ? title_match[1].trim() : "матч мирры андреевой (@tennis_bolshe)";
 
           if (is_live && !found_live) {
             found_live = { title, direct_url };
@@ -152,7 +151,7 @@
           live_box_el.innerHTML = `
             <a href="${found_live.direct_url}" target="_blank" class="play-card">
               <div class="play-circle live">🔴</div>
-              <div class="play-caption">смотреть прямой эфир в vk видео</div>
+              <div class="play-caption">открыть прямой эфир в vk видео</div>
               <div class="play-sub">трансляция уже идет на @tennis_bolshe</div>
             </a>`;
         } else {
@@ -164,7 +163,7 @@
           replay_box_el.innerHTML = `
             <a href="${found_replay.direct_url}" target="_blank" class="play-card">
               <div class="play-circle">▶</div>
-              <div class="play-caption">смотреть запись матча в vk видео</div>
+              <div class="play-caption">открыть запись матча в vk видео</div>
               <div class="play-sub">свежая запись с @tennis_bolshe</div>
             </a>`;
         }
@@ -196,6 +195,7 @@
               );
               if (!has_andreeva) continue;
 
-              const p1 = comps?.athlete?.displayName || "";
-              const p2 = comps?.athlete?.displayName || "";
+              const p1 = comps[0]?.athlete?.displayName || "";
+              const p2 = comps[1]?.athlete?.displayName || "";
               const state = match.status?.type?.state || "pre";
+              const dt = new Date(match.date).toLocaleString("ru-RU", {
