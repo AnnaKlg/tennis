@@ -19,10 +19,14 @@
     .sub-info { color: #65676b; font-size: 13px; margin-top: 4px; }
     .video-box { background: #18191a; color: #fff; border-radius: 16px; padding: 14px; margin-bottom: 18px; }
     .video-label { font-size: 12px; font-weight: bold; color: #4dabf7; margin-bottom: 8px; display: flex; justify-content: space-between; }
-    .video-frame { width: 100%; height: 240px; border: none; border-radius: 10px; background: #000; }
-    .controls { display: flex; gap: 8px; margin-top: 10px; }
+    .video-frame { width: 100%; height: 225px; border: none; border-radius: 10px; background: #000; display: block; }
+    .url-bar { display: flex; gap: 6px; margin-top: 10px; }
+    .url-input { flex: 1; background: #2c2d2e; border: 1px solid #3a3b3c; color: #fff; padding: 8px 10px; border-radius: 8px; font-size: 12px; outline: none; }
+    .url-input::placeholder { color: #8a8d91; }
+    .controls { display: flex; gap: 8px; margin-top: 8px; }
     .btn { flex: 1; background: #2c2d2e; color: #fff; border: none; padding: 10px; border-radius: 10px; font-size: 12px; font-weight: 600; cursor: pointer; text-align: center; text-decoration: none; }
     .btn-primary { background: #0077ff; }
+    .btn-save { background: #28a745; padding: 8px 12px; border-radius: 8px; color: #fff; border: none; font-size: 12px; font-weight: 600; cursor: pointer; }
     .section-title { font-size: 16px; font-weight: bold; margin: 18px 0 10px; display: flex; justify-content: space-between; align-items: center; }
     .card { background: #f8f9fa; padding: 12px; border-radius: 12px; margin-bottom: 8px; font-size: 13px; line-height: 1.45; }
     .card-next { background: #fff9db; border: 1px solid #ffe066; }
@@ -40,20 +44,29 @@
 
     <div class="player-info">
       <h1 class="player-name">мирра андреева</h1>
-      <div class="sub-info">wta #3 • итоговый турнир wta finals 2026</div>
+      <div class="sub-info">wta • итоговый турнир и матчи сезона</div>
     </div>
 
-    <!-- блок видео строго с канала больше теннис по фильтру андреева -->
+    <!-- блок чистого плеера вк без ленты -->
     <div class="video-box">
       <div class="video-label">
-        <span>📺 видео канала «больше! | теннис»</span>
-        <span style="color: #8a8d91;">поиск: андреева</span>
+        <span>📺 плеер «больше! | теннис»</span>
+        <span style="color: #8a8d91;">vk video</span>
       </div>
-      <!-- встроенная лента видеозаписей канала -218116775 с фильтром по слову андреева -->
-      <iframe class="video-frame" src="https://vkvideo.ru" allow="autoplay; encrypted-media; fullscreen; picture-in-picture;" allowfullscreen></iframe>
+      
+      <div id="player-area">
+        <iframe id="vk-iframe" class="video-frame" src="" allow="autoplay; encrypted-media; fullscreen; picture-in-picture;" allowfullscreen></iframe>
+      </div>
+
+      <!-- быстрая вставка ссылки на конкретный эфир или запись -->
+      <div class="url-bar">
+        <input id="vk-link-input" class="url-input" type="text" placeholder="вставьте ссылку на видео с андреевой...">
+        <button class="btn-save" onclick="apply_vk_link()">▶</button>
+      </div>
+
       <div class="controls">
-        <a href="https://vkvideo.ru/@tennis_bolshe/lives" target="_blank" class="btn btn-primary">🔴 эфиры канала</a>
-        <a href="https://vkvideo.ru" target="_blank" class="btn">📼 все записи (андреева)</a>
+        <a href="https://vkvideo.ru" target="_blank" class="btn btn-primary">🔴 эфиры @tennis_bolshe</a>
+        <a href="https://vkvideo.ru" target="_blank" class="btn">📼 записи (андреева)</a>
       </div>
     </div>
 
@@ -91,7 +104,32 @@
   </div>
 
   <script>
-    // автоматическое фоновое обновление сетки wta через открытый api
+    // преобразуем любую ссылку вк видео в чистый плеер без ленты
+    function to_embed_url(raw_url) {
+      const match = raw_url.match(/video(-?\d+)_(\d+)/);
+      if (match) {
+        return `https://vk.com{match[1]}&id=${match[2]}&hd=2`;
+      }
+      return "";
+    }
+
+    function apply_vk_link() {
+      const input = document.getElementById("vk-link-input");
+      const embed = to_embed_url(input.value.trim());
+      if (embed) {
+        document.getElementById("vk-iframe").src = embed;
+        localStorage.setItem("saved_andreeva_video", embed);
+        input.value = "";
+      } else {
+        alert("скопируйте ссылку на само видео из вк (вида vkvideo.ru/video-218116775_...)");
+      }
+    }
+
+    // загружаем сохраненное видео или актуальную запись канала @tennis_bolshe
+    const saved = localStorage.getItem("saved_andreeva_video");
+    const default_embed = "https://vk.com";
+    document.getElementById("vk-iframe").src = saved || default_embed;
+
     async function load_tennis_data() {
       const up_el = document.getElementById("upcoming-list");
       const past_el = document.getElementById("past-list");
@@ -144,9 +182,7 @@
 
         if (upcoming_html) up_el.innerHTML = upcoming_html;
         if (past_html) past_el.innerHTML = past_html;
-      } catch (e) {
-        // при блокировке сети сохраняем актуальные загруженные карточки
-      }
+      } catch (e) {}
     }
 
     load_tennis_data();
