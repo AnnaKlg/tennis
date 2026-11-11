@@ -5,7 +5,7 @@ import urllib.request
 
 channels = [
     "https://t.me",
-    "https://t.me/s/tennis_bolshe"
+    "https://t.me"
 ]
 
 data = {
@@ -27,7 +27,6 @@ for url in channels:
         with urllib.request.urlopen(req, timeout=15) as resp:
             page = html.unescape(resp.read().decode("utf-8", errors="ignore"))
 
-        # разбиваем ленту на отдельные посты (новые в конце списка)
         messages = page.split('class="tgme_widget_message_wrap')
         for msg in reversed(messages[1:]):
             clean_text = re.sub(r"<[^>]+>", " ", msg)
@@ -36,16 +35,17 @@ for url in channels:
             if "андреева" not in clean_text.lower():
                 continue
 
-            # ищем прямую ссылку на ролик вк видео внутри поста
-            vk_match = re.search(
-                r'href="(https?://(?:m\.)?(?:vk\.com|vkvideo\.ru)/video-?\d+_\d+[^"\s]*)"',
-                msg,
-                re.I
-            )
-            if not vk_match:
+            # ищем любую ссылку на вк (включая прямые видео и короткие ссылки vk.cc из превью)
+            links = re.findall(r'href="(https?://(?:m\.)?(?:vk\.com|vkvideo\.ru|vk\.cc)/[^"\s]+)"', msg, re.I)
+            video_link = ""
+            for link in links:
+                if "video" in link.lower() or "vk.cc" in link.lower():
+                    video_link = link
+                    break
+
+            if not video_link:
                 continue
 
-            video_link = vk_match.group(1)
             title_match = re.search(r"([^\.!\n]{5,85}андреева[^\.!\n]{5,85})", clean_text, re.I)
             title = title_match.group(1).strip() if title_match else "матч мирры андреевой (@tennis_bolshe)"
 
@@ -58,14 +58,14 @@ for is_live, title, link in found_videos:
     if is_live and not data["live_url"]:
         data["live_title"] = title
         data["live_url"] = link
-    elif not is_live and "q=" in data["replay_url"]:
+    elif not is_live and data["replay_url"] == "https://vkvideo.ru":
         data["replay_title"] = title
         data["replay_url"] = link
 
-# если нашелся только один ролик с эфиром, ставим его и в запись, чтобы кнопка не пустовала
-if "q=" in data["replay_url"] and found_videos:
-    data["replay_title"] = found_videos[0][1]
-    data["replay_url"] = found_videos[0][2]
+# если нашелся только один ролик (например, запись эфира), берем первый элемент списка
+if data["replay_url"] == "https://vkvideo.ru" and len(found_videos) > 0:
+    data["replay_title"] = found_videos[1]
+    data["replay_url"] = found_videos[2]
 
 with open("video.json", "w", encoding="utf-8") as f:
     json.dump(data, f, ensure_ascii=False, indent=2)
