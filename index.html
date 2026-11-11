@@ -20,12 +20,13 @@
     .video-box { background: #18191a; color: #fff; border-radius: 16px; padding: 14px; margin-bottom: 14px; }
     .video-label { font-size: 12px; font-weight: bold; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
     .video-title { font-size: 13px; color: #e4e6eb; margin-bottom: 10px; line-height: 1.4; }
-    .play-card { display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(135deg, #242526 0%, #1c1e21 100%); border: 1px solid #3a3b3c; border-radius: 12px; padding: 20px 14px; text-decoration: none; color: #fff; transition: transform 0.15s; }
+    .play-card { display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(135deg, #242526 0%, #1c1e21 100%); border: 1px solid #3a3b3c; border-radius: 12px; padding: 18px 14px; text-decoration: none; color: #fff; transition: transform 0.15s; }
     .play-card:active { transform: scale(0.98); }
-    .play-circle { width: 50px; height: 50px; border-radius: 50%; background: #0077ff; display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 8px; box-shadow: 0 4px 14px rgba(0, 119, 255, 0.45); }
+    .play-circle { width: 48px; height: 48px; border-radius: 50%; background: #0077ff; display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 8px; box-shadow: 0 4px 14px rgba(0, 119, 255, 0.45); }
     .play-circle.live { background: #ff3b30; box-shadow: 0 4px 14px rgba(255, 59, 48, 0.45); }
     .play-caption { font-size: 13px; font-weight: 600; text-align: center; }
     .play-sub { font-size: 11px; color: #8a8d91; margin-top: 4px; text-align: center; }
+    .sub-link { display: block; text-align: center; margin-top: 8px; font-size: 11px; color: #8ab4f8; text-decoration: none; }
     .placeholder-box { width: 100%; height: 85px; border-radius: 10px; background: #242526; display: flex; align-items: center; justify-content: center; text-align: center; padding: 12px; font-size: 12px; color: #8a8d91; }
     .section-title { font-size: 16px; font-weight: bold; margin: 18px 0 10px; display: flex; justify-content: space-between; align-items: center; }
     .card { background: #f8f9fa; padding: 12px; border-radius: 12px; margin-bottom: 8px; font-size: 13px; line-height: 1.45; }
@@ -59,7 +60,7 @@
       </div>
     </div>
 
-    <!-- окошко 2: прямая ссылка на последний матч -->
+    <!-- окошко 2: прямая ссылка сразу на ролик последнего матча -->
     <div class="video-box">
       <div class="video-label">
         <span style="color: #4dabf7;">📼 2. запись последнего матча</span>
@@ -67,11 +68,12 @@
       </div>
       <div id="replay-title" class="video-title">мирра андреева — элина свитолина | wta finals | итоговый турнир</div>
       <div id="replay-player-box">
-        <a href="https://vkvideo.ru" target="_blank" class="play-card">
+        <a href="https://vk.com" target="_blank" rel="noopener" class="play-card">
           <div class="play-circle">▶</div>
-          <div class="play-caption">открыть запись матча в vk видео</div>
-          <div class="play-sub">прямой переход сразу на нужный ролик</div>
+          <div class="play-caption">открыть запись матча</div>
+          <div class="play-sub">прямой переход на видео андреева — свитолина</div>
         </a>
+        <a href="https://vk.com" target="_blank" rel="noopener" class="sub-link">если вк открыл общий список — нажать для фильтра по андреевой →</a>
       </div>
     </div>
 
@@ -133,11 +135,14 @@
           const vid_match = block.match(/video(-218116775)_(\d+)/);
           if (!vid_match) continue;
 
-          const direct_url = `https://vkvideo.ru{vid_match[1]}_${vid_match[2]}`;
+          // правильная склейка id группы и id ролика без лишних символов
+          const owner_id = vid_match[1];
+          const video_id = vid_match[2];
+          const direct_url = `https://vk.com{owner_id}_${video_id}`;
           const is_live = clean_text.toLowerCase().includes("прямая трансляция") || clean_text.toLowerCase().includes("live");
 
           const title_match = clean_text.match(/([^\.!\n]{10,90}андреева[^\.!\n]{5,90})/i);
-          const title = title_match ? title_match[1].trim() : "матч мирры андреевой (@tennis_bolshe)";
+          const title = title_match ? title_match.trim() : "матч мирры андреевой (@tennis_bolshe)";
 
           if (is_live && !found_live) {
             found_live = { title, direct_url };
@@ -149,10 +154,10 @@
         if (found_live) {
           live_title_el.textContent = found_live.title;
           live_box_el.innerHTML = `
-            <a href="${found_live.direct_url}" target="_blank" class="play-card">
+            <a href="${found_live.direct_url}" target="_blank" rel="noopener" class="play-card">
               <div class="play-circle live">🔴</div>
-              <div class="play-caption">открыть прямой эфир в vk видео</div>
-              <div class="play-sub">трансляция уже идет на @tennis_bolshe</div>
+              <div class="play-caption">открыть прямой эфир</div>
+              <div class="play-sub">сразу откроется трансляция на @tennis_bolshe</div>
             </a>`;
         } else {
           live_title_el.textContent = "активного эфира сейчас нет";
@@ -161,11 +166,12 @@
         if (found_replay && !found_replay.direct_url.includes("456252790")) {
           replay_title_el.textContent = found_replay.title;
           replay_box_el.innerHTML = `
-            <a href="${found_replay.direct_url}" target="_blank" class="play-card">
+            <a href="${found_replay.direct_url}" target="_blank" rel="noopener" class="play-card">
               <div class="play-circle">▶</div>
-              <div class="play-caption">открыть запись матча в vk видео</div>
+              <div class="play-caption">открыть запись матча</div>
               <div class="play-sub">свежая запись с @tennis_bolshe</div>
-            </a>`;
+            </a>
+            <a href="https://vk.com" target="_blank" rel="noopener" class="sub-link">если вк открыл общий список — нажать для фильтра по андреевой →</a>`;
         }
       } catch (e) {
         live_title_el.textContent = "активного эфира сейчас нет";
@@ -183,19 +189,3 @@
         const data = await res.json();
 
         let upcoming_html = "";
-        let past_html = "";
-
-        for (const ev of (data.events || [])) {
-          const tournament = ev.name || "wta";
-          for (const group of (ev.groupings || [])) {
-            for (const match of (group.competitions || [])) {
-              const comps = match.competitors || [];
-              const has_andreeva = comps.some(c =>
-                c.athlete?.displayName?.toLowerCase().includes("andreeva")
-              );
-              if (!has_andreeva) continue;
-
-              const p1 = comps[0]?.athlete?.displayName || "";
-              const p2 = comps[1]?.athlete?.displayName || "";
-              const state = match.status?.type?.state || "pre";
-              const dt = new Date(match.date).toLocaleString("ru-RU", {
