@@ -1,10 +1,11 @@
+import html
 import json
 import re
 import requests
 
-url = "https://vk.com"
+url = "https://vkvideo.ru"
 headers = {
-    "user-agent": "mozilla/5.0 (linux; android 13) applewebkit/537.36 (khtml, like gecko) chrome/120.0.0.0 mobile safari/537.36",
+    "user-agent": "mozilla/5.0 (windows nt 10.0; win64; x64) applewebkit/537.36 (khtml, like gecko) chrome/122.0.0.0 safari/537.36",
     "accept-language": "ru-RU,ru;q=0.9"
 }
 
@@ -12,42 +13,48 @@ data = {
     "live_title": "активного эфира сейчас нет",
     "live_url": "",
     "replay_title": "последние видео с андреевой (@tennis_bolshe)",
-    "replay_url": "https://vk.com"
+    "replay_url": "https://vkvideo.ru?q=%D0%B0%D0%BD%D0%B4%D1%80%D0%B5%D0%B5%D0%B2%D0%B0"
 }
 
 try:
     res = requests.get(url, headers=headers, timeout=15)
-    html = res.text
+    page = html.unescape(res.text)
 
-    # разбиваем страницу на отдельные посты сообщества
-    blocks = html.split('class="wall_item')
-    for block in blocks[1:]:
-        clean_text = re.sub(r"<[^>]+>", " ", block)
-        clean_text = " ".join(clean_text.split())
+    # ищем пары из названия видео и его id на витрине vkvideo.ru
+    patterns = [
+        r'"title"\s*:\s*"([^"]+)"[^\}]{0,400}?"id"\s*:\s*(\d{7,12})',
+        r'href="(/video-218116775_(\d+))"[^>]*title="([^"]+)"',
+        r'title="([^"]+)"[^>]*href="(/video-218116775_(\d+))"'
+    ]
 
-        if "андреева" not in clean_text.lower():
-            continue
+    found_items = []
 
-        # ищем реальную ссылку на видео вместе с параметром list, если он есть
-        vid_match = re.search(r'href="(/video-218116775_\d+(?:\?list=[a-z0-9]+)?)"', block, re.I)
-        if not vid_match:
-            continue
+    for m in re.finditer(patterns[0], page):
+        title, vid = m.group(1), m.group(2)
+        if "андреева" in title.lower():
+            found_items.append((title, f"https://vkvideo.ru_{vid}"))
 
-        real_url = "https://vk.com" + vid_match.group(1)
-        is_live = "прямая трансляция" in clean_text.lower() or "live" in clean_text.lower()
+    if not found_items:
+        for m in re.finditer(patterns[1], page):
+            path, title = m.group(1), m.group(3)
+            if "андреева" in title.lower():
+                found_items.append((title, "https://vkvideo.ru" + path))
 
-        title_match = re.search(r"([^\.!\n]{10,85}андреева[^\.!\n]{5,85})", clean_text, re.I)
-        title = title_match.group(1).strip() if title_match else "матч мирры андреевой (@tennis_bolshe)"
+    if not found_items:
+        for m in re.finditer(patterns[2], page):
+            title, path = m.group(1), m.group(2)
+            if "андреева" in title.lower():
+                found_items.append((title, "https://vkvideo.ru" + path))
 
+    for title, link in found_items:
+        is_live = "прямой эфир" in title.lower() or "live" in title.lower()
         if is_live and not data["live_url"]:
             data["live_title"] = title
-            data["live_url"] = real_url
-        elif not is_live and data["replay_url"].startswith("https://vk.com@"):
+            data["live_url"] = link
+        elif not is_live and "q=" in data["replay_url"]:
             data["replay_title"] = title
-            data["replay_url"] = real_url
+            data["replay_url"] = link
 
-        if data["live_url"] and not data["replay_url"].startswith("https://vk.com@"):
-            break
 except Exception:
     pass
 
