@@ -20,8 +20,8 @@
     .video-box { background: #18191a; color: #fff; border-radius: 16px; padding: 14px; margin-bottom: 14px; }
     .video-label { font-size: 12px; font-weight: bold; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
     .video-title { font-size: 12px; color: #b0b3b8; margin-bottom: 8px; line-height: 1.35; }
-    .video-frame { width: 100%; height: 215px; border: none; border-radius: 10px; background: #000; display: block; }
-    .placeholder-box { width: 100%; height: 110px; border-radius: 10px; background: #242526; display: flex; align-items: center; justify-content: center; text-align: center; padding: 12px; font-size: 12px; color: #8a8d91; }
+    .video-frame { width: 100%; height: 220px; border: none; border-radius: 10px; background: #000; display: block; }
+    .placeholder-box { width: 100%; height: 95px; border-radius: 10px; background: #242526; display: flex; align-items: center; justify-content: center; text-align: center; padding: 12px; font-size: 12px; color: #8a8d91; }
     .section-title { font-size: 16px; font-weight: bold; margin: 18px 0 10px; display: flex; justify-content: space-between; align-items: center; }
     .card { background: #f8f9fa; padding: 12px; border-radius: 12px; margin-bottom: 8px; font-size: 13px; line-height: 1.45; }
     .card-next { background: #fff9db; border: 1px solid #ffe066; }
@@ -34,12 +34,12 @@
   <div class="app">
     <div class="header">
       <strong>🎾 трекер: андреева</strong>
-      <span class="badge" id="sync-status">автообновление</span>
+      <span class="badge">@tennis_bolshe</span>
     </div>
 
     <div class="player-info">
       <h1 class="player-name">мирра андреева</h1>
-      <div class="sub-info">канал «больше! | теннис» • фильтр: андреева</div>
+      <div class="sub-info">канал «больше! | теннис» • автопоиск видео: андреева</div>
     </div>
 
     <!-- окошко 1: прямая трансляция -->
@@ -48,9 +48,9 @@
         <span style="color: #ff4d4f;">🔴 1. прямой эфир</span>
         <span style="color: #8a8d91;">@tennis_bolshe</span>
       </div>
-      <div id="live-title" class="video-title">поиск активного эфира с андреевой...</div>
+      <div id="live-title" class="video-title">проверка прямых эфиров на @tennis_bolshe...</div>
       <div id="live-player-box">
-        <div class="placeholder-box">сейчас прямого эфира с андреевой нет — плеер появится сам при старте матча</div>
+        <div class="placeholder-box">сейчас активного эфира с андреевой нет — плеер появится сам при старте следующего матча</div>
       </div>
     </div>
 
@@ -60,9 +60,9 @@
         <span style="color: #4dabf7;">📼 2. запись последнего матча</span>
         <span style="color: #8a8d91;">@tennis_bolshe</span>
       </div>
-      <div id="replay-title" class="video-title">поиск последней записи с андреевой...</div>
+      <div id="replay-title" class="video-title">мирра андреева — элина свитолина | wta finals | итоговый турнир</div>
       <div id="replay-player-box">
-        <div class="placeholder-box">загрузка записи с канала «больше! | теннис»...</div>
+        <iframe class="video-frame" src="https://vk.com" allow="autoplay; encrypted-media; fullscreen; picture-in-picture;" allowfullscreen></iframe>
       </div>
     </div>
 
@@ -100,86 +100,62 @@
   </div>
 
   <script>
-    // автоматический сборщик видео с канала больше теннис (-218116775)
+    // автоматическая проверка новых эфиров и записей на канале @tennis_bolshe (-218116775)
     async function load_vk_videos() {
       const live_title_el = document.getElementById("live-title");
       const live_box_el = document.getElementById("live-player-box");
       const replay_title_el = document.getElementById("replay-title");
       const replay_box_el = document.getElementById("replay-player-box");
 
-      // публичные rss-шлюзы для чтения видеозаписей группы вк без авторизации
-      const feeds = [
-        "https://rss2json.com" + encodeURIComponent("https://rsshub.app"),
-        "https://allorigins.win" + encodeURIComponent("https://vk.com")
-      ];
+      const proxy_url = "https://allorigins.win" + encodeURIComponent("https://vk.com");
 
-      let found_videos = [];
-
-      // 1. пробуем получить список постов и видео через rss-поток канала
       try {
-        const res = await fetch(feeds);
-        const data = await res.json();
-        if (data.status === "ok" && data.items) {
-          for (const item of data.items) {
-            const full_text = (item.title + " " + item.description + " " + item.content).toLowerCase();
-            if (!full_text.includes("андреева")) continue;
+        const res = await fetch(proxy_url);
+        const json = await res.json();
+        const html = json.contents || "";
 
-            const vid_match = (item.link + " " + item.description + " " + item.content).match(/video(-?\d+)_(\d+)/);
-            if (vid_match) {
-              const oid = vid_match;
-              const vid = vid_match;
-              const is_live = full_text.includes("прямой эфир") || full_text.includes("live") || full_text.includes("трансляция");
-              found_videos.push({
-                title: item.title || "матч мирры андреевой (@tennis_bolshe)",
-                embed: `https://vk.com{oid}&id=${vid}&hd=2`,
-                is_live: is_live
-              });
-            }
+        // ищем на стене сообщества @tennis_bolshe посты и видео со словом андреева
+        const post_blocks = html.split("wall_item");
+        let found_live = null;
+        let found_replay = null;
+
+        for (const block of post_blocks) {
+          const clean_text = block.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+          if (!clean_text.toLowerCase().includes("андреева")) continue;
+
+          const vid_match = block.match(/video(-218116775)_(\d+)/);
+          if (!vid_match) continue;
+
+          const oid = vid_match;
+          const vid = vid_match;
+          const embed = `https://vk.com{oid}&id=${vid}&hd=2`;
+          const is_live = clean_text.toLowerCase().includes("прямая трансляция") || clean_text.toLowerCase().includes("live");
+
+          // вытаскиваем читаемый заголовок матча
+          const title_match = clean_text.match(/([^\.!\n]{10,90}андреева[^\.!\n]{5,90})/i);
+          const title = title_match ? title_match.trim() : "матч мирры андреевой (@tennis_bolshe)";
+
+          if (is_live && !found_live) {
+            found_live = { title, embed };
+          } else if (!is_live && !found_replay) {
+            found_replay = { title, embed };
           }
         }
-      } catch (e) {}
 
-      // 2. резервный прямой парсинг мобильной витрины видеозаписей канала через прокси
-      if (found_videos.length === 0) {
-        try {
-          const res = await fetch(feeds);
-          const json = await res.json();
-          const html = json.contents || "";
-          const regex = /href="\/video(-?\d+)_(\d+)"[^>]*>([^<]+)</gi;
-          let m;
-          while ((m = regex.exec(html)) !== null) {
-            const title = m.trim();
-            if (title.toLowerCase().includes("андреева")) {
-              const is_live = title.toLowerCase().includes("эфир") || title.toLowerCase().includes("live");
-              found_videos.push({
-                title: title,
-                embed: `https://vk.com{m}&id=${m}&hd=2`,
-                is_live: is_live
-              });
-            }
-          }
-        } catch (e) {}
-      }
+        if (found_live) {
+          live_title_el.textContent = found_live.title;
+          live_box_el.innerHTML = `<iframe class="video-frame" src="${found_live.embed}" allow="autoplay; encrypted-media; fullscreen; picture-in-picture;" allowfullscreen></iframe>`;
+        } else {
+          live_title_el.textContent = "активного эфира сейчас нет";
+        }
 
-      // распределяем найденные видео по двум окошкам
-      const live_video = found_videos.find(v => v.is_live);
-      const replay_video = found_videos.find(v => !v.is_live) || found_videos;
-
-      if (live_video) {
-        live_title_el.textContent = live_video.title;
-        live_box_el.innerHTML = `<iframe class="video-frame" src="${live_video.embed}" allow="autoplay; encrypted-media; fullscreen; picture-in-picture;" allowfullscreen></iframe>`;
-      } else {
+        // если на канале появилась более свежая запись чем матч со свитолиной — обновляем второе окошко
+        if (found_replay && !found_replay.embed.includes("456252790")) {
+          replay_title_el.textContent = found_replay.title;
+          replay_box_el.innerHTML = `<iframe class="video-frame" src="${found_replay.embed}" allow="autoplay; encrypted-media; fullscreen; picture-in-picture;" allowfullscreen></iframe>`;
+        }
+      } catch (e) {
         live_title_el.textContent = "активного эфира сейчас нет";
-        live_box_el.innerHTML = `<div class="placeholder-box">сейчас прямого эфира с андреевой на @tennis_bolshe нет</div>`;
-      }
-
-      if (replay_video) {
-        replay_title_el.textContent = replay_video.title;
-        replay_box_el.innerHTML = `<iframe class="video-frame" src="${replay_video.embed}" allow="autoplay; encrypted-media; fullscreen; picture-in-picture;" allowfullscreen></iframe>`;
-      } else {
-        // резервный плеер последнего доступного матча на канале больше теннис
-        replay_title_el.textContent = "последний доступный матч мирры андреевой (@tennis_bolshe)";
-        replay_box_el.innerHTML = `<iframe class="video-frame" src="https://vk.com" allow="autoplay; encrypted-media; fullscreen; picture-in-picture;" allowfullscreen></iframe>`;
       }
     }
 
@@ -202,3 +178,26 @@
             for (const match of (group.competitions || [])) {
               const comps = match.competitors || [];
               const has_andreeva = comps.some(c =>
+                c.athlete?.displayName?.toLowerCase().includes("andreeva")
+              );
+              if (!has_andreeva) continue;
+
+              const p1 = comps?.athlete?.displayName || "";
+              const p2 = comps?.athlete?.displayName || "";
+              const state = match.status?.type?.state || "pre";
+              const dt = new Date(match.date).toLocaleString("ru-RU", {
+                day: "numeric", month: "long", hour: "2-digit", minute: "2-digit"
+              });
+
+              if (state === "pre" || state === "in") {
+                upcoming_html += `
+                  <div class="card card-next">
+                    <strong>${state === "in" ? "🔴 идет сейчас" : "🗓 " + dt}</strong><br>
+                    ${p1} — ${p2}<br>
+                    <span class="muted">${tournament}</span>
+                  </div>`;
+              } else if (state === "post") {
+                const me = comps.find(c => c.athlete?.displayName?.toLowerCase().includes("andreeva"));
+                const is_win = me?.winner === true;
+                past_html += `
+                  <div class="card ${is_win ? "win" : "loss"}">
