@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="ru">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#18191a">
+    <title>мирра андреева</title>
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns=%22http://w3.org viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎾</text></svg>">
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, blinkmacsystemfont, sans-serif;
+            background: #f0f2f5;
+            margin: 0;
+            padding: 14px;
+            color: #1c1e21;
+        }
+
+        .app {
+            max-width: 460px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 22px;
+            padding: 18px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 12px;
+        }
+
+        .badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 12px;
+            background: #e7f5ff;
+            color: #1971c2;
+        }
+
+        .player-info {
+            margin: 14px 0;
+        }
+
+        .player-name {
+            font-size: 22px;
+            font-weight: bold;
+            margin: 0;
+        }
+
+        .sub-info {
+            color: #65676b;
+            font-size: 13px;
+            margin-top: 4px;
+        }
+
+        .video-box {
+            background: #18191a;
+            color: #fff;
+            border-radius: 16px;
+            padding: 14px;
+            margin-bottom: 18px;
+        }
+
+        .video-label {
+            font-size: 12px;
+            font-weight: bold;
+            color: #4dabf7;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .video-frame {
+            width: 100%;
+            height: 220px;
+            border: none;
+            border-radius: 10px;
+            background: #000;
+        }
+
+        .controls {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .btn {
+            flex: 1;
+            background: #2c2d2e;
+            color: #fff;
+            border: none;
+            padding: 10px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: #0077ff;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: bold;
+            margin: 18px 0 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 12px;
+            margin-bottom: 8px;
+            font-size: 13px;
+            line-height: 1.45;
+        }
+
+        .card-live {
+            background: #fff5f5;
+            border: 1px solid #ffc9c9;
+        }
+
+        .win {
+            border-left: 4px solid #28a745;
+        }
+
+        .loss {
+            border-left: 4px solid #dc3545;
+        }
+
+        .muted {
+            color: #868e96;
+            font-size: 12px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app">
+        <div class="header">
+            <strong>🎾 трекер: андреева</strong>
+            <span class="badge">@tennis_bolshe</span>
+        </div>
+
+        <div class="player-info">
+            <h1 class="player-name">мирра андреева</h1>
+            <div class="sub-info">эфиры, записи матчей и расписание wta</div>
+        </div>
+
+        <!-- блок видео с @tennis_bolshe -->
+        <div class="video-box">
+            <div class="video-label">
+                <span id="video-status">📺 эфиры и записи @tennis_bolshe</span>
+                <span id="video-mode" style="color: #8a8d91;">автопоиск</span>
+            </div>
+            <div id="player-container">
+                <iframe class="video-frame" src="https://vk.com"
+                    allow="autoplay; encrypted-media; fullscreen; picture-in-picture;" allowfullscreen></iframe>
+            </div>
+            <div class="controls">
+                <a href="https://vkvideo.ru" target="_blank" class="btn btn-primary">🔴 прямой эфир</a>
+                <a href="https://vkvideo.ru" target="_blank" class="btn">📼 все записи (андреева)</a>
+            </div>
+        </div>
+
+        <div class="section-title">
+            <span>📅 ближайшие матчи</span>
+            <button onclick="load_tennis_data()"
+                style="border:none; background:none; cursor:pointer; font-size:14px;">🔄</button>
+        </div>
+        <div id="upcoming-list">
+            <div class="card muted">загрузка расписания wta...</div>
+        </div>
+
+        <div class="section-title">📊 прошедшие игры</div>
+        <div id="past-list">
+            <div class="card muted">загрузка результатов...</div>
+        </div>
+    </div>
+
+    <script>
+        // используем открытый спортивный поток espn wta без блокировок браузера
+        const espn_url = "https://espn.com";
+
+        function format_local_date(iso_str) {
+            const date = new Date(iso_str);
+            return date.toLocaleString("ru-RU", {
+                day: "numeric",
+                month: "long",
+                hour: "2-digit",
+                minute: "2-digit"
+            });
+        }
+
+        async function load_tennis_data() {
+            const up_el = document.getElementById("upcoming-list");
+            const past_el = document.getElementById("past-list");
+
+            try {
+                const res = await fetch(espn_url);
+                const data = await res.json();
+
+                let upcoming_html = "";
+                let past_html = "";
+
+                const events = data.events || [];
+                for (const ev of events) {
+                    const tournament = ev.name || "турнир wta";
+                    const groupings = ev.groupings || [];
+
+                    for (const group of groupings) {
+                        const comps = group.competitions || [];
+                        for (const match of comps) {
+                            const competitors = match.competitors || [];
+                            // ищем мирру андрееву в списке участников матча
+                            const has_andreeva = competitors.some(c =>
+                                (c.athlete && c.athlete.displayName && c.athlete.displayName.toLowerCase().includes("andreeva"))
+                            );
+
+                            if (!has_andreeva) continue;
+
+                            const p1 = competitors[0]?.athlete?.displayName || "игрок 1";
+                            const p2 = competitors[1]?.athlete?.displayName || "игрок 2";
+                            const state = match.status?.type?.state || "pre";
+                            const date_text = format_local_date(match.date);
+
+                            if (state === "pre" || state === "in") {
+                                const is_live = state === "in";
+                                upcoming_html += `
+                  <div class="card ${is_live ? 'card-live' : ''}">
+                    <strong>${is_live ? '🔴 идет сейчас' : '🗓 ' + date_text}</strong><br>
+                    ${p1} — ${p2}<br>
+                    <span class="muted">${tournament}</span>
+                  </div>`;
+                            } else if (state === "post") {
+                                const andreeva_comp = competitors.find(c => c.athlete?.displayName?.toLowerCase().includes("andreeva"));
+                                const is_win = andreeva_comp?.winner === true;
+                                const score = competitors.map(c => (c.linescores || []).map(s => s.value).join(":")).join(" / ");
+
+                                past_html += `
+                  <div class="card ${is_win ? 'win' : 'loss'}">
+                    <strong>${is_win ? '✅ победа' : '❌ поражение'}</strong> • ${p1} — ${p2}<br>
+                    <span class="muted">${tournament} • ${date_text}</span>
+                  </div>`;
+                            }
+                        }
+                    }
+                }
+
+                up_el.innerHTML = upcoming_html || `<div class="card muted">ближайших матчей в текущей сетке wta не найдено</div>`;
+                past_el.innerHTML = past_html || `<div class="card muted">завершенных матчей на текущем турнире пока нет</div>`;
+
+            } catch (e) {
+                up_el.innerHTML = `<div class="card muted">не удалось обновить сетку, проверьте интернет</div>`;
+            }
+        }
+
+        load_tennis_data();
+    </script>
+</body>
+
+</html>
