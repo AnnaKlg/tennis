@@ -1,5 +1,13 @@
 import json
-import subprocess
+import re
+import urllib.request
+import xml.etree.ElementTree as et
+
+rss_urls = [
+    "https://rsshub.app",
+    "https://rssforever.com",
+    "https://slarker.me"
+]
 
 data = {
     "live_title": "активного эфира сейчас нет",
@@ -8,36 +16,54 @@ data = {
     "replay_url": "https://vk.com"
 }
 
-try:
-    cmd = [
-        "yt-dlp",
-        "--flat-playlist",
-        "--playlist-end", "30",
-        "-j",
-        "https://vk.com"
-    ]
-    res = subprocess.run(cmd, capture_output=True, text=True, timeout=45)
-    for line in res.stdout.splitlines():
-        if not line.strip():
-            continue
-        item = json.loads(line)
-        title = item.get("title", "")
-        video_url = item.get("url") or item.get("webpage_url", "")
-        if "андреева" not in title.lower() or not video_url:
-            continue
+headers = {
+    "user-agent": "mozilla/5.0 (windows nt 10.0; win64; x64) applewebkit/537.36 (khtml, like gecko) chrome/122.0.0.0 safari/537.36"
+}
 
-        is_live = item.get("live_status") == "is_live" or "прямой эфир" in title.lower() or "live" in title.lower()
-        if is_live and not data["live_url"]:
-            data["live_title"] = title
-            data["live_url"] = video_url
-        elif not is_live and "q=" in data["replay_url"]:
-            data["replay_title"] = title
-            data["replay_url"] = video_url
+for rss_url in rss_urls:
+    try:
+        req = urllib.request.Request(rss_url, headers=headers)
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            xml_data = resp.read()
 
-        if data["live_url"] and "q=" not in data["replay_url"]:
+        root = et.fromstring(xml_data)
+        items = root.findall(".//item")
+
+        for item in items:
+            title_el = item.find("title")
+            desc_el = item.find("description")
+            link_el = item.find("link")
+
+            title = title_el.text if title_el is not None and title_el.text else ""
+            desc = desc_el.text if desc_el is not None and desc_el.text else ""
+            link = link_el.text if link_el is not None and link_el.text else ""
+
+            full_text = f"{title} {desc}".lower()
+            if "андреева" not in full_text:
+                continue
+
+            vid_match = re.search(r"video(-218116775_\d+)", f"{link} {desc}")
+            if not vid_match:
+                continue
+
+            real_video_url = "https://vk.com" + vid_match.group(1)
+            clean_title = re.sub(r"<[^>]+>", " ", title).strip() or "матч мирры андреевой (@tennis_bolshe)"
+            is_live = "прямой эфир" in full_text or "прямая трансляция" in full_text or "live" in full_text
+
+            if is_live and not data["live_url"]:
+                data["live_title"] = clean_title
+                data["live_url"] = real_video_url
+            elif not is_live and "q=" in data["replay_url"]:
+                data["replay_title"] = clean_title
+                data["replay_url"] = real_video_url
+
+            if data["live_url"] and "q=" not in data["replay_url"]:
+                break
+
+        if "q=" not in data["replay_url"] or data["live_url"]:
             break
-except Exception:
-    pass
+    except Exception:
+        continue
 
 with open("video.json", "w", encoding="utf-8") as f:
     json.dump(data, f, ensure_ascii=False, indent=2)
