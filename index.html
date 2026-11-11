@@ -26,7 +26,6 @@
     .play-circle.live { background: #ff3b30; box-shadow: 0 4px 14px rgba(255, 59, 48, 0.45); }
     .play-caption { font-size: 13px; font-weight: 600; text-align: center; }
     .play-sub { font-size: 11px; color: #8a8d91; margin-top: 4px; text-align: center; }
-    .sub-link { display: block; text-align: center; margin-top: 8px; font-size: 11px; color: #8ab4f8; text-decoration: none; }
     .placeholder-box { width: 100%; height: 85px; border-radius: 10px; background: #242526; display: flex; align-items: center; justify-content: center; text-align: center; padding: 12px; font-size: 12px; color: #8a8d91; }
     .section-title { font-size: 16px; font-weight: bold; margin: 18px 0 10px; display: flex; justify-content: space-between; align-items: center; }
     .card { background: #f8f9fa; padding: 12px; border-radius: 12px; margin-bottom: 8px; font-size: 13px; line-height: 1.45; }
@@ -60,7 +59,7 @@
       </div>
     </div>
 
-    <!-- окошко 2: прямая ссылка сразу на ролик последнего матча -->
+    <!-- окошко 2: прямая ссылка с ключом доступа list на ролик матча -->
     <div class="video-box">
       <div class="video-label">
         <span style="color: #4dabf7;">📼 2. запись последнего матча</span>
@@ -68,12 +67,11 @@
       </div>
       <div id="replay-title" class="video-title">мирра андреева — элина свитолина | wta finals | итоговый турнир</div>
       <div id="replay-player-box">
-        <a href="https://vk.com" target="_blank" rel="noopener" class="play-card">
+        <a href="https://m.vk.ru/video-218116775_456252790?list=5facc2c40ec01b9c93" target="_blank" rel="noopener" class="play-card">
           <div class="play-circle">▶</div>
           <div class="play-caption">открыть запись матча</div>
           <div class="play-sub">прямой переход на видео андреева — свитолина</div>
         </a>
-        <a href="https://vk.com" target="_blank" rel="noopener" class="sub-link">если вк открыл общий список — нажать для фильтра по андреевой →</a>
       </div>
     </div>
 
@@ -117,7 +115,7 @@
       const replay_title_el = document.getElementById("replay-title");
       const replay_box_el = document.getElementById("replay-player-box");
 
-      const proxy_url = "https://allorigins.win" + encodeURIComponent("https://vk.com");
+      const proxy_url = "https://allorigins.win" + encodeURIComponent("https://m.vk.ru/tennis_bolshe");
 
       try {
         const res = await fetch(proxy_url);
@@ -132,13 +130,11 @@
           const clean_text = block.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
           if (!clean_text.toLowerCase().includes("андреева")) continue;
 
-          const vid_match = block.match(/video(-218116775)_(\d+)/);
+          // ищем ссылку на ролик вместе с параметром list, если он есть
+          const vid_match = block.match(/video(-218116775_\d+(?:\?list=[a-z0-9]+)?)/i);
           if (!vid_match) continue;
 
-          // правильная склейка id группы и id ролика без лишних символов
-          const owner_id = vid_match[1];
-          const video_id = vid_match[2];
-          const direct_url = `https://vk.com{owner_id}_${video_id}`;
+          const direct_url = "https://m.vk.ru/video" + vid_match[1];
           const is_live = clean_text.toLowerCase().includes("прямая трансляция") || clean_text.toLowerCase().includes("live");
 
           const title_match = clean_text.match(/([^\.!\n]{10,90}андреева[^\.!\n]{5,90})/i);
@@ -170,8 +166,7 @@
               <div class="play-circle">▶</div>
               <div class="play-caption">открыть запись матча</div>
               <div class="play-sub">свежая запись с @tennis_bolshe</div>
-            </a>
-            <a href="https://vk.com" target="_blank" rel="noopener" class="sub-link">если вк открыл общий список — нажать для фильтра по андреевой →</a>`;
+            </a>`;
         }
       } catch (e) {
         live_title_el.textContent = "активного эфира сейчас нет";
@@ -189,3 +184,17 @@
         const data = await res.json();
 
         let upcoming_html = "";
+        let past_html = "";
+
+        for (const ev of (data.events || [])) {
+          const tournament = ev.name || "wta";
+          for (const group of (ev.groupings || [])) {
+            for (const match of (group.competitions || [])) {
+              const comps = match.competitors || [];
+              const has_andreeva = comps.some(c =>
+                c.athlete?.displayName?.toLowerCase().includes("andreeva")
+              );
+              if (!has_andreeva) continue;
+
+              const p1 = comps[0]?.athlete?.displayName || "";
+              const p2 = comps[1]?.athlete?.displayName || "";
