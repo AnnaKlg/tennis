@@ -1,0 +1,30 @@
+name: update_vk_video
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: setup_python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: install_requests
+        run: pip install requests
+      - name: run_script
+        run: python fetch_video.py
+      - name: save_result
+        run: |
+          git config user.name "bot"
+          git config user.email "bot@://github.com"
+          git add video.json
+          git commit -m "update video" || exit 0
+          git push
