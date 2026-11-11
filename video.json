@@ -1,6 +1,6 @@
 {
   "live_title": "активного эфира сейчас нет",
   "live_url": "",
-  "replay_title": "ошибка: токен не передан в скрипт",
+  "replay_title": "ошибка сети: Expecting value: line 1 column 7 (char 6)",
   "replay_url": "https://vk.com"
 }
